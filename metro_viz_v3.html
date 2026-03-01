@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>HCMC Metro Line 1 — Tết Day 5 Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;min-height:100%;background:#fff;color:#1a202c;
+  font-family:'IBM Plex Sans',sans-serif;font-size:14px;}
+
+.page{width:100%;padding:32px 40px 56px 40px;}
+
+/* HEADER */
+.header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;
+  gap:16px;border-bottom:2px solid #1a202c;padding-bottom:18px;margin-bottom:36px;}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;
+  color:#718096;text-transform:uppercase;margin-bottom:6px;}
+h1{font-size:clamp(18px,2vw,28px);font-weight:700;line-height:1.2;letter-spacing:-.5px;}
+.sub{color:#718096;font-size:13px;margin-top:4px;}
+.kpi-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;}
+.kpi{border:1.5px solid #e2e8f0;border-radius:6px;padding:10px 18px;}
+.kv{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#2563eb;}
+.kv.r{color:#dc2626;}
+.kl{font-size:10px;color:#718096;letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
+
+/* SECTION */
+.section{margin-bottom:52px;width:100%;}
+.sec-hdr{display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+  border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-bottom:14px;}
+.sec-num{font-family:'IBM Plex Mono',monospace;font-size:10px;background:#1a202c;
+  color:#fff;padding:2px 8px;border-radius:3px;white-space:nowrap;}
+.sec-ttl{font-size:14px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+.sec-note{margin-left:auto;font-size:11px;color:#718096;white-space:nowrap;}
+
+/* CHART CONTAINERS — truly full width */
+.chart-full{width:100%;display:block;line-height:0;overflow-x:hidden;}
+.chart-full svg{width:100%;display:block;}
+
+/* CIRCULAR ROW */
+.circ-row{display:flex;align-items:flex-start;gap:40px;width:100%;}
+.circ-right{flex:1 1 0;min-width:0;}
+.hour-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px;}
+.hcell{border:1px solid #e2e8f0;border-radius:4px;padding:7px 10px;border-left:3px solid #e2e8f0;}
+.hcell.am{border-left-color:#dc2626;}
+.hcell.pm{border-left-color:#2563eb;}
+.hl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#718096;}
+.hv{font-size:14px;font-weight:600;margin-top:1px;}
+.bdg{display:inline-block;font-size:7px;padding:1px 4px;border-radius:2px;
+  font-family:'IBM Plex Mono',monospace;margin-left:3px;vertical-align:middle;}
+.am .bdg{background:#dc2626;color:#fff;}
+.pm .bdg{background:#2563eb;color:#fff;}
+
+/* LEGEND */
+.lgnd{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:#4a5568;}
+.ldot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+
+/* GRADIENT BAR */
+.gbar{width:200px;height:12px;border-radius:3px;display:inline-block;}
+
+/* TOOLTIP */
+#tt{position:fixed;pointer-events:none;background:rgba(10,15,30,.95);color:#fff;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;padding:10px 14px;
+  border-radius:5px;max-width:290px;z-index:9999;opacity:0;transition:opacity .1s;line-height:1.7;}
+#tt b{color:#93c5fd;display:block;margin-bottom:1px;}
+
+footer{margin-top:24px;padding-top:14px;border-top:1px solid #e2e8f0;
+  font-family:'IBM Plex Mono',monospace;font-size:9px;color:#718096;
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="eyebrow">HO CHI MINH CITY · METRO LINE 1 · SMART CARD ANALYTICS</div>
+    <h1>Tết Holiday Day 5 — Ridership Intelligence Dashboard</h1>
+    <div class="sub">February 21, 2026 &nbsp;·&nbsp; Bến Thành ↔ Suối Tiên Bus Terminal &nbsp;·&nbsp; 05:00–21:00</div>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kv">96,320</div><div class="kl">Total Passengers</div></div>
+    <div class="kpi"><div class="kv">70%</div><div class="kl">BT ↔ ST Corridor</div></div>
+    <div class="kpi"><div class="kv">14</div><div class="kl">Stations</div></div>
+    <div class="kpi"><div class="kv r">21,031</div><div class="kl">Peak Hour (18h)</div></div>
+  </div>
+</div>
+
+<!-- 01 SANKEY -->
+<div class="section">
+  <div class="sec-hdr">
+    <span class="sec-num">01</span>
+    <span class="sec-ttl">Origin–Destination Flow (Sankey)</span>
+    <span class="sec-note">Left = Departures &nbsp;|&nbsp; Right = Arrivals &nbsp;|&nbsp; Ribbon width ∝ volume &nbsp;|&nbsp; Hover ribbons</span>
+  </div>
+  <div class="chart-full" id="s1"></div>
+  <div class="lgnd" id="s1-lgnd"></div>
+</div>
+
+<!-- 02 HEATMAP -->
+<div class="section">
+  <div class="sec-hdr">
+    <span class="sec-num">02</span>
+    <span class="sec-ttl">Station-Level Heatmap — Check-in Volume per Hour</span>
+    <span class="sec-note">Red dashed = peak hours &nbsp;|&nbsp; Hover cells</span>
+  </div>
+  <div class="chart-full" id="s2"></div>
+  <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+    <span style="font-size:11px;color:#718096;">Low</span>
+    <div id="gmbar" class="gbar"></div>
+    <span style="font-size:11px;color:#718096;">High</span>
+  </div>
+</div>
+
+<!-- 03 TIME–SPACE -->
+<div class="section">
+  <div class="sec-hdr">
+    <span class="sec-num">03</span>
+    <span class="sec-ttl">Time–Space Diagram — Train Movements</span>
+    <span class="sec-note">
+      <span style="color:#2563eb;font-weight:700;">━━</span> BT→ST &nbsp;
+      <span style="color:#dc2626;font-weight:700;">━━</span> ST→BT &nbsp;
+      Steeper = faster &nbsp;|&nbsp; Denser = shorter headway
+    </span>
+  </div>
+  <div class="chart-full" id="s3"></div>
+</div>
+
+<!-- 04 CIRCULAR -->
+<div class="section">
+  <div class="sec-hdr">
+    <span class="sec-num">04</span>
+    <span class="sec-ttl">Hourly Distribution — Circular Barchart</span>
+    <span class="sec-note">
+      <span style="color:#dc2626;font-weight:700;">■</span> AM Peak &nbsp;
+      <span style="color:#2563eb;font-weight:700;">■</span> PM Peak &nbsp;
+      <span style="color:#94a3b8;font-weight:700;">■</span> Off-peak
+    </span>
+  </div>
+  <div class="circ-row">
+    <div id="s4-svg-wrap"></div>
+    <div class="circ-right">
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px;">Hourly Breakdown</div>
+      <div style="font-size:11px;color:#718096;margin-bottom:8px;">Total check-ins per hour · All 14 stations combined</div>
+      <div class="hour-grid" id="hgrid"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>DATA: HCMC Metro Line 1 Smart Card System · Synthetic Dataset · Tết Day 5 (Feb 21, 2026)</span>
+  <span>96,320 PASSENGERS · 14 STATIONS · 05:00–21:00</span>
+</footer>
+</div>
+<div id="tt"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════
+const ST = [
+  "Ben Thanh","City Opera House","Ba Son","Van Thanh","Tan Cang",
+  "Thao Dien","An Phu","Rach Chiec","Phuoc Long","Binh Thai",
+  "Thu Duc","High-Tech Park","Vietnam National University","Suoi Tien Bus Terminal"
+];
+const SS = [
+  "Ben Thanh","City Opera","Ba Son","Van Thanh","Tan Cang",
+  "Thao Dien","An Phu","Rach Chiec","Phuoc Long","Binh Thai",
+  "Thu Duc","Hi-Tech Park","VNU","Suoi Tien"
+];
+const SC = [
+  "#2563eb","#7c3aed","#be185d","#ea580c","#ca8a04",
+  "#16a34a","#0891b2","#64748b","#b91c1c","#92400e",
+  "#0f766e","#1d4ed8","#9333ea","#7f1d1d"
+];
+
+const OD = [{"O":"An Phu","D":"Ba Son","v":78},{"O":"An Phu","D":"Ben Thanh","v":211},{"O":"An Phu","D":"Binh Thai","v":155},{"O":"An Phu","D":"City Opera House","v":89},{"O":"An Phu","D":"High-Tech Park","v":78},{"O":"An Phu","D":"Phuoc Long","v":253},{"O":"An Phu","D":"Rach Chiec","v":298},{"O":"An Phu","D":"Suoi Tien Bus Terminal","v":160},{"O":"An Phu","D":"Tan Cang","v":218},{"O":"An Phu","D":"Thao Dien","v":308},{"O":"An Phu","D":"Thu Duc","v":72},{"O":"An Phu","D":"Van Thanh","v":152},{"O":"An Phu","D":"Vietnam National University","v":67},{"O":"Ba Son","D":"An Phu","v":71},{"O":"Ba Son","D":"Ben Thanh","v":705},{"O":"Ba Son","D":"Binh Thai","v":70},{"O":"Ba Son","D":"City Opera House","v":279},{"O":"Ba Son","D":"Phuoc Long","v":69},{"O":"Ba Son","D":"Rach Chiec","v":66},{"O":"Ba Son","D":"Tan Cang","v":226},{"O":"Ba Son","D":"Thao Dien","v":173},{"O":"Ba Son","D":"Thu Duc","v":84},{"O":"Ba Son","D":"Van Thanh","v":314},{"O":"Ben Thanh","D":"An Phu","v":225},{"O":"Ben Thanh","D":"Ba Son","v":635},{"O":"Ben Thanh","D":"City Opera House","v":831},{"O":"Ben Thanh","D":"Phuoc Long","v":237},{"O":"Ben Thanh","D":"Rach Chiec","v":228},{"O":"Ben Thanh","D":"Suoi Tien Bus Terminal","v":38527},{"O":"Ben Thanh","D":"Tan Cang","v":245},{"O":"Ben Thanh","D":"Thao Dien","v":228},{"O":"Ben Thanh","D":"Van Thanh","v":477},{"O":"Binh Thai","D":"An Phu","v":148},{"O":"Binh Thai","D":"Ba Son","v":69},{"O":"Binh Thai","D":"City Opera House","v":92},{"O":"Binh Thai","D":"High-Tech Park","v":225},{"O":"Binh Thai","D":"Phuoc Long","v":308},{"O":"Binh Thai","D":"Rach Chiec","v":222},{"O":"Binh Thai","D":"Suoi Tien Bus Terminal","v":149},{"O":"Binh Thai","D":"Tan Cang","v":65},{"O":"Binh Thai","D":"Thao Dien","v":71},{"O":"Binh Thai","D":"Thu Duc","v":308},{"O":"Binh Thai","D":"Van Thanh","v":74},{"O":"Binh Thai","D":"Vietnam National University","v":134},{"O":"City Opera House","D":"An Phu","v":47},{"O":"City Opera House","D":"Ba Son","v":311},{"O":"City Opera House","D":"Ben Thanh","v":883},{"O":"City Opera House","D":"Binh Thai","v":75},{"O":"City Opera House","D":"Phuoc Long","v":71},{"O":"City Opera House","D":"Rach Chiec","v":77},{"O":"City Opera House","D":"Tan Cang","v":166},{"O":"City Opera House","D":"Thao Dien","v":76},{"O":"City Opera House","D":"Van Thanh","v":217},{"O":"High-Tech Park","D":"An Phu","v":74},{"O":"High-Tech Park","D":"Binh Thai","v":244},{"O":"High-Tech Park","D":"Phuoc Long","v":168},{"O":"High-Tech Park","D":"Rach Chiec","v":80},{"O":"High-Tech Park","D":"Suoi Tien Bus Terminal","v":475},{"O":"High-Tech Park","D":"Tan Cang","v":89},{"O":"High-Tech Park","D":"Thao Dien","v":74},{"O":"High-Tech Park","D":"Thu Duc","v":307},{"O":"High-Tech Park","D":"Van Thanh","v":57},{"O":"High-Tech Park","D":"Vietnam National University","v":298},{"O":"Phuoc Long","D":"An Phu","v":207},{"O":"Phuoc Long","D":"Ba Son","v":79},{"O":"Phuoc Long","D":"Ben Thanh","v":201},{"O":"Phuoc Long","D":"Binh Thai","v":324},{"O":"Phuoc Long","D":"City Opera House","v":63},{"O":"Phuoc Long","D":"High-Tech Park","v":165},{"O":"Phuoc Long","D":"Rach Chiec","v":294},{"O":"Phuoc Long","D":"Suoi Tien Bus Terminal","v":139},{"O":"Phuoc Long","D":"Tan Cang","v":88},{"O":"Phuoc Long","D":"Thao Dien","v":136},{"O":"Phuoc Long","D":"Thu Duc","v":224},{"O":"Phuoc Long","D":"Van Thanh","v":80},{"O":"Phuoc Long","D":"Vietnam National University","v":84},{"O":"Rach Chiec","D":"An Phu","v":272},{"O":"Rach Chiec","D":"Ba Son","v":85},{"O":"Rach Chiec","D":"Ben Thanh","v":232},{"O":"Rach Chiec","D":"Binh Thai","v":246},{"O":"Rach Chiec","D":"City Opera House","v":69},{"O":"Rach Chiec","D":"High-Tech Park","v":70},{"O":"Rach Chiec","D":"Phuoc Long","v":304},{"O":"Rach Chiec","D":"Suoi Tien Bus Terminal","v":154},{"O":"Rach Chiec","D":"Tan Cang","v":146},{"O":"Rach Chiec","D":"Thao Dien","v":229},{"O":"Rach Chiec","D":"Thu Duc","v":155},{"O":"Rach Chiec","D":"Van Thanh","v":65},{"O":"Rach Chiec","D":"Vietnam National University","v":75},{"O":"Suoi Tien Bus Terminal","D":"An Phu","v":140},{"O":"Suoi Tien Bus Terminal","D":"Ben Thanh","v":28896},{"O":"Suoi Tien Bus Terminal","D":"Binh Thai","v":164},{"O":"Suoi Tien Bus Terminal","D":"High-Tech Park","v":501},{"O":"Suoi Tien Bus Terminal","D":"Phuoc Long","v":139},{"O":"Suoi Tien Bus Terminal","D":"Rach Chiec","v":154},{"O":"Suoi Tien Bus Terminal","D":"Thao Dien","v":157},{"O":"Suoi Tien Bus Terminal","D":"Thu Duc","v":284},{"O":"Suoi Tien Bus Terminal","D":"Vietnam National University","v":641},{"O":"Tan Cang","D":"An Phu","v":231},{"O":"Tan Cang","D":"Ba Son","v":212},{"O":"Tan Cang","D":"Ben Thanh","v":217},{"O":"Tan Cang","D":"Binh Thai","v":78},{"O":"Tan Cang","D":"City Opera House","v":150},{"O":"Tan Cang","D":"High-Tech Park","v":77},{"O":"Tan Cang","D":"Phuoc Long","v":78},{"O":"Tan Cang","D":"Rach Chiec","v":150},{"O":"Tan Cang","D":"Thao Dien","v":323},{"O":"Tan Cang","D":"Thu Duc","v":88},{"O":"Tan Cang","D":"Van Thanh","v":310},{"O":"Tan Cang","D":"Vietnam National University","v":99},{"O":"Thao Dien","D":"An Phu","v":296},{"O":"Thao Dien","D":"Ba Son","v":143},{"O":"Thao Dien","D":"Ben Thanh","v":195},{"O":"Thao Dien","D":"Binh Thai","v":70},{"O":"Thao Dien","D":"City Opera House","v":59},{"O":"Thao Dien","D":"High-Tech Park","v":87},{"O":"Thao Dien","D":"Phuoc Long","v":161},{"O":"Thao Dien","D":"Rach Chiec","v":215},{"O":"Thao Dien","D":"Suoi Tien Bus Terminal","v":143},{"O":"Thao Dien","D":"Tan Cang","v":292},{"O":"Thao Dien","D":"Thu Duc","v":72},{"O":"Thao Dien","D":"Van Thanh","v":246},{"O":"Thao Dien","D":"Vietnam National University","v":73},{"O":"Thu Duc","D":"An Phu","v":69},{"O":"Thu Duc","D":"Ba Son","v":93},{"O":"Thu Duc","D":"Binh Thai","v":305},{"O":"Thu Duc","D":"High-Tech Park","v":315},{"O":"Thu Duc","D":"Phuoc Long","v":234},{"O":"Thu Duc","D":"Rach Chiec","v":148},{"O":"Thu Duc","D":"Suoi Tien Bus Terminal","v":299},{"O":"Thu Duc","D":"Tan Cang","v":84},{"O":"Thu Duc","D":"Thao Dien","v":80},{"O":"Thu Duc","D":"Van Thanh","v":77},{"O":"Thu Duc","D":"Vietnam National University","v":214},{"O":"Van Thanh","D":"An Phu","v":156},{"O":"Van Thanh","D":"Ba Son","v":305},{"O":"Van Thanh","D":"Ben Thanh","v":412},{"O":"Van Thanh","D":"Binh Thai","v":74},{"O":"Van Thanh","D":"City Opera House","v":227},{"O":"Van Thanh","D":"High-Tech Park","v":74},{"O":"Van Thanh","D":"Phuoc Long","v":73},{"O":"Van Thanh","D":"Rach Chiec","v":75},{"O":"Van Thanh","D":"Tan Cang","v":265},{"O":"Van Thanh","D":"Thao Dien","v":203},{"O":"Van Thanh","D":"Thu Duc","v":71},{"O":"Vietnam National University","D":"An Phu","v":82},{"O":"Vietnam National University","D":"Binh Thai","v":154},{"O":"Vietnam National University","D":"High-Tech Park","v":303},{"O":"Vietnam National University","D":"Phuoc Long","v":72},{"O":"Vietnam National University","D":"Rach Chiec","v":80},{"O":"Vietnam National University","D":"Suoi Tien Bus Terminal","v":626},{"O":"Vietnam National University","D":"Tan Cang","v":70},{"O":"Vietnam National University","D":"Thao Dien","v":53},{"O":"Vietnam National University","D":"Thu Duc","v":217}];
+
+const HM = [{"h":5,"s":"An Phu","c":136},{"h":5,"s":"Ba Son","c":110},{"h":5,"s":"Ben Thanh","c":1507},{"h":5,"s":"Binh Thai","c":110},{"h":5,"s":"City Opera House","c":108},{"h":5,"s":"High-Tech Park","c":122},{"h":5,"s":"Phuoc Long","c":126},{"h":5,"s":"Rach Chiec","c":143},{"h":5,"s":"Suoi Tien Bus Terminal","c":354},{"h":5,"s":"Tan Cang","c":131},{"h":5,"s":"Thao Dien","c":138},{"h":5,"s":"Thu Duc","c":125},{"h":5,"s":"Van Thanh","c":127},{"h":5,"s":"Vietnam National University","c":119},{"h":6,"s":"An Phu","c":136},{"h":6,"s":"Ba Son","c":127},{"h":6,"s":"Ben Thanh","c":1500},{"h":6,"s":"Binh Thai","c":138},{"h":6,"s":"City Opera House","c":107},{"h":6,"s":"High-Tech Park","c":130},{"h":6,"s":"Phuoc Long","c":131},{"h":6,"s":"Rach Chiec","c":123},{"h":6,"s":"Suoi Tien Bus Terminal","c":391},{"h":6,"s":"Tan Cang","c":133},{"h":6,"s":"Thao Dien","c":108},{"h":6,"s":"Thu Duc","c":133},{"h":6,"s":"Van Thanh","c":112},{"h":6,"s":"Vietnam National University","c":95},{"h":7,"s":"An Phu","c":131},{"h":7,"s":"Ba Son","c":142},{"h":7,"s":"Ben Thanh","c":14319},{"h":7,"s":"Binh Thai","c":122},{"h":7,"s":"City Opera House","c":122},{"h":7,"s":"High-Tech Park","c":123},{"h":7,"s":"Phuoc Long","c":131},{"h":7,"s":"Rach Chiec","c":131},{"h":7,"s":"Suoi Tien Bus Terminal","c":373},{"h":7,"s":"Tan Cang","c":133},{"h":7,"s":"Thao Dien","c":145},{"h":7,"s":"Thu Duc","c":131},{"h":7,"s":"Van Thanh","c":114},{"h":7,"s":"Vietnam National University","c":92},{"h":8,"s":"An Phu","c":142},{"h":8,"s":"Ba Son","c":150},{"h":8,"s":"Ben Thanh","c":8145},{"h":8,"s":"Binh Thai","c":105},{"h":8,"s":"City Opera House","c":139},{"h":8,"s":"High-Tech Park","c":118},{"h":8,"s":"Phuoc Long","c":130},{"h":8,"s":"Rach Chiec","c":142},{"h":8,"s":"Suoi Tien Bus Terminal","c":336},{"h":8,"s":"Tan Cang","c":126},{"h":8,"s":"Thao Dien","c":141},{"h":8,"s":"Thu Duc","c":116},{"h":8,"s":"Van Thanh","c":138},{"h":8,"s":"Vietnam National University","c":109},{"h":9,"s":"An Phu","c":134},{"h":9,"s":"Ba Son","c":115},{"h":9,"s":"Ben Thanh","c":1858},{"h":9,"s":"Binh Thai","c":129},{"h":9,"s":"City Opera House","c":105},{"h":9,"s":"High-Tech Park","c":120},{"h":9,"s":"Phuoc Long","c":135},{"h":9,"s":"Rach Chiec","c":108},{"h":9,"s":"Suoi Tien Bus Terminal","c":390},{"h":9,"s":"Tan Cang","c":133},{"h":9,"s":"Thao Dien","c":137},{"h":9,"s":"Thu Duc","c":113},{"h":9,"s":"Van Thanh","c":132},{"h":9,"s":"Vietnam National University","c":115},{"h":10,"s":"An Phu","c":146},{"h":10,"s":"Ba Son","c":145},{"h":10,"s":"Ben Thanh","c":1877},{"h":10,"s":"Binh Thai","c":123},{"h":10,"s":"City Opera House","c":145},{"h":10,"s":"High-Tech Park","c":110},{"h":10,"s":"Phuoc Long","c":136},{"h":10,"s":"Rach Chiec","c":124},{"h":10,"s":"Suoi Tien Bus Terminal","c":386},{"h":10,"s":"Tan Cang","c":108},{"h":10,"s":"Thao Dien","c":141},{"h":10,"s":"Thu Duc","c":127},{"h":10,"s":"Van Thanh","c":131},{"h":10,"s":"Vietnam National University","c":106},{"h":11,"s":"An Phu","c":109},{"h":11,"s":"Ba Son","c":126},{"h":11,"s":"Ben Thanh","c":1899},{"h":11,"s":"Binh Thai","c":94},{"h":11,"s":"City Opera House","c":129},{"h":11,"s":"High-Tech Park","c":121},{"h":11,"s":"Phuoc Long","c":105},{"h":11,"s":"Rach Chiec","c":127},{"h":11,"s":"Suoi Tien Bus Terminal","c":350},{"h":11,"s":"Tan Cang","c":132},{"h":11,"s":"Thao Dien","c":99},{"h":11,"s":"Thu Duc","c":120},{"h":11,"s":"Van Thanh","c":140},{"h":11,"s":"Vietnam National University","c":110},{"h":12,"s":"An Phu","c":125},{"h":12,"s":"Ba Son","c":135},{"h":12,"s":"Ben Thanh","c":1970},{"h":12,"s":"Binh Thai","c":102},{"h":12,"s":"City Opera House","c":114},{"h":12,"s":"High-Tech Park","c":92},{"h":12,"s":"Phuoc Long","c":121},{"h":12,"s":"Rach Chiec","c":142},{"h":12,"s":"Suoi Tien Bus Terminal","c":366},{"h":12,"s":"Tan Cang","c":110},{"h":12,"s":"Thao Dien","c":152},{"h":12,"s":"Thu Duc","c":126},{"h":12,"s":"Van Thanh","c":100},{"h":12,"s":"Vietnam National University","c":96},{"h":13,"s":"An Phu","c":151},{"h":13,"s":"Ba Son","c":106},{"h":13,"s":"Ben Thanh","c":1967},{"h":13,"s":"Binh Thai","c":117},{"h":13,"s":"City Opera House","c":114},{"h":13,"s":"High-Tech Park","c":128},{"h":13,"s":"Phuoc Long","c":128},{"h":13,"s":"Rach Chiec","c":134},{"h":13,"s":"Suoi Tien Bus Terminal","c":313},{"h":13,"s":"Tan Cang","c":130},{"h":13,"s":"Thao Dien","c":124},{"h":13,"s":"Thu Duc","c":123},{"h":13,"s":"Van Thanh","c":118},{"h":13,"s":"Vietnam National University","c":93},{"h":14,"s":"An Phu","c":145},{"h":14,"s":"Ba Son","c":147},{"h":14,"s":"Ben Thanh","c":1997},{"h":14,"s":"Binh Thai","c":111},{"h":14,"s":"City Opera House","c":128},{"h":14,"s":"High-Tech Park","c":117},{"h":14,"s":"Phuoc Long","c":119},{"h":14,"s":"Rach Chiec","c":127},{"h":14,"s":"Suoi Tien Bus Terminal","c":352},{"h":14,"s":"Tan Cang","c":120},{"h":14,"s":"Thao Dien","c":115},{"h":14,"s":"Thu Duc","c":104},{"h":14,"s":"Van Thanh","c":130},{"h":14,"s":"Vietnam National University","c":97},{"h":15,"s":"An Phu","c":136},{"h":15,"s":"Ba Son","c":130},{"h":15,"s":"Ben Thanh","c":1964},{"h":15,"s":"Binh Thai","c":134},{"h":15,"s":"City Opera House","c":116},{"h":15,"s":"High-Tech Park","c":110},{"h":15,"s":"Phuoc Long","c":136},{"h":15,"s":"Rach Chiec","c":131},{"h":15,"s":"Suoi Tien Bus Terminal","c":363},{"h":15,"s":"Tan Cang","c":99},{"h":15,"s":"Thao Dien","c":119},{"h":15,"s":"Thu Duc","c":112},{"h":15,"s":"Van Thanh","c":119},{"h":15,"s":"Vietnam National University","c":95},{"h":16,"s":"An Phu","c":131},{"h":16,"s":"Ba Son","c":120},{"h":16,"s":"Ben Thanh","c":1873},{"h":16,"s":"Binh Thai","c":122},{"h":16,"s":"City Opera House","c":107},{"h":16,"s":"High-Tech Park","c":130},{"h":16,"s":"Phuoc Long","c":118},{"h":16,"s":"Rach Chiec","c":140},{"h":16,"s":"Suoi Tien Bus Terminal","c":324},{"h":16,"s":"Tan Cang","c":119},{"h":16,"s":"Thao Dien","c":125},{"h":16,"s":"Thu Duc","c":100},{"h":16,"s":"Van Thanh","c":116},{"h":16,"s":"Vietnam National University","c":111},{"h":17,"s":"An Phu","c":141},{"h":17,"s":"Ba Son","c":123},{"h":17,"s":"Ben Thanh","c":203},{"h":17,"s":"Binh Thai","c":127},{"h":17,"s":"City Opera House","c":117},{"h":17,"s":"High-Tech Park","c":113},{"h":17,"s":"Phuoc Long","c":149},{"h":17,"s":"Rach Chiec","c":151},{"h":17,"s":"Suoi Tien Bus Terminal","c":356},{"h":17,"s":"Tan Cang","c":145},{"h":17,"s":"Thao Dien","c":134},{"h":17,"s":"Thu Duc","c":119},{"h":17,"s":"Van Thanh","c":110},{"h":17,"s":"Vietnam National University","c":100},{"h":18,"s":"An Phu","c":121},{"h":18,"s":"Ba Son","c":141},{"h":18,"s":"Ben Thanh","c":155},{"h":18,"s":"Binh Thai","c":110},{"h":18,"s":"City Opera House","c":129},{"h":18,"s":"High-Tech Park","c":114},{"h":18,"s":"Phuoc Long","c":128},{"h":18,"s":"Rach Chiec","c":129},{"h":18,"s":"Suoi Tien Bus Terminal","c":19409},{"h":18,"s":"Tan Cang","c":121},{"h":18,"s":"Thao Dien","c":123},{"h":18,"s":"Thu Duc","c":130},{"h":18,"s":"Van Thanh","c":103},{"h":18,"s":"Vietnam National University","c":118},{"h":19,"s":"An Phu","c":119},{"h":19,"s":"Ba Son","c":117},{"h":19,"s":"Ben Thanh","c":200},{"h":19,"s":"Binh Thai","c":112},{"h":19,"s":"City Opera House","c":115},{"h":19,"s":"High-Tech Park","c":98},{"h":19,"s":"Phuoc Long","c":148},{"h":19,"s":"Rach Chiec","c":122},{"h":19,"s":"Suoi Tien Bus Terminal","c":3472},{"h":19,"s":"Tan Cang","c":133},{"h":19,"s":"Thao Dien","c":128},{"h":19,"s":"Thu Duc","c":114},{"h":19,"s":"Van Thanh","c":118},{"h":19,"s":"Vietnam National University","c":98},{"h":20,"s":"An Phu","c":136},{"h":20,"s":"Ba Son","c":123},{"h":20,"s":"Ben Thanh","c":199},{"h":20,"s":"Binh Thai","c":109},{"h":20,"s":"City Opera House","c":128},{"h":20,"s":"High-Tech Park","c":120},{"h":20,"s":"Phuoc Long","c":143},{"h":20,"s":"Rach Chiec","c":128},{"h":20,"s":"Suoi Tien Bus Terminal","c":3541},{"h":20,"s":"Tan Cang","c":140},{"h":20,"s":"Thao Dien","c":123},{"h":20,"s":"Thu Duc","c":125},{"h":20,"s":"Van Thanh","c":127},{"h":20,"s":"Vietnam National University","c":103}];
+
+const HR = [{"h":5,"c":3356},{"h":6,"c":3364},{"h":7,"c":16209},{"h":8,"c":10037},{"h":9,"c":3724},{"h":10,"c":3805},{"h":11,"c":3661},{"h":12,"c":3751},{"h":13,"c":3746},{"h":14,"c":3809},{"h":15,"c":3764},{"h":16,"c":3636},{"h":17,"c":2088},{"h":18,"c":21031},{"h":19,"c":5094},{"h":20,"c":5245}];
+
+// ═══════════════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════════════
+const tt = document.getElementById('tt');
+function show(html,e){ tt.innerHTML=html; tt.style.opacity=1; mv(e); }
+function mv(e){
+  let x=e.clientX+16, y=e.clientY-12;
+  if(x+300>window.innerWidth) x=e.clientX-304;
+  if(y<4) y=e.clientY+16;
+  tt.style.left=x+'px'; tt.style.top=y+'px';
+}
+function hide(){ tt.style.opacity=0; }
+
+// ═══════════════════════════════════════════════
+// WIDTH HELPER — truly full page width
+// ═══════════════════════════════════════════════
+function PW(){ return document.querySelector('.page').clientWidth; }
+
+// ═══════════════════════════════════════════════
+// CHART 1 — SANKEY
+// ═══════════════════════════════════════════════
+function drawSankey(){
+  // margins: left label area, right label area, top, bottom
+  const mL=155, mR=155, mT=32, mB=12;
+  const W = PW();
+  const H = 740;
+  const iW = W - mL - mR;   // inner plot width — uses FULL page width
+  const iH = H - mT - mB;
+  const nW=14, nPad=5;       // node bar width, gap between nodes
+
+  // Aggregate dep/arr sums
+  const depS={}, arrS={};
+  ST.forEach(s=>{ depS[s]=0; arrS[s]=0; });
+  OD.forEach(d=>{ depS[d.O]+=d.v; arrS[d.D]+=d.v; });
+  const totDep=ST.reduce((a,s)=>a+depS[s],0);
+  const totArr=ST.reduce((a,s)=>a+arrS[s],0);
+  const usable = iH - nPad*(ST.length-1);
+
+  // Build left nodes (departures)
+  const LN=[], RN=[];
+  let y=0;
+  ST.forEach((s,i)=>{
+    const h=Math.max(5,(depS[s]/totDep)*usable);
+    LN.push({id:s,i,y,h}); y+=h+nPad;
+  });
+  // centre vertically
+  let off=Math.max(0,(iH-(y-nPad))/2);
+  LN.forEach(n=>n.y+=off);
+
+  y=0;
+  ST.forEach((s,i)=>{
+    const h=Math.max(5,(arrS[s]/totArr)*usable);
+    RN.push({id:s,i,y,h}); y+=h+nPad;
+  });
+  off=Math.max(0,(iH-(y-nPad))/2);
+  RN.forEach(n=>n.y+=off);
+
+  const Li={}, Ri={};
+  LN.forEach(n=>Li[n.id]=n);
+  RN.forEach(n=>Ri[n.id]=n);
+  const lCur={}, rCur={};
+  ST.forEach(s=>{ lCur[s]=Li[s].y; rCur[s]=Ri[s].y; });
+
+  const links=OD.map(d=>{
+    const ln=Li[d.O], rn=Ri[d.D];
+    const lh=(d.v/depS[d.O])*ln.h;
+    const rh=(d.v/arrS[d.D])*rn.h;
+    const ly0=lCur[d.O], ry0=rCur[d.D];
+    lCur[d.O]+=lh; rCur[d.D]+=rh;
+    return {O:d.O, D:d.D, v:d.v, ly0,lh,ry0,rh};
+  });
+
+  const svg=d3.select('#s1').append('svg')
+    .attr('width',W).attr('height',H)
+    .attr('viewBox',`0 0 ${W} ${H}`).attr('preserveAspectRatio','none');
+
+  const defs=svg.append('defs');
+  const g=svg.append('g').attr('transform',`translate(${mL},${mT})`);
+
+  // Links
+  links.forEach((l,i)=>{
+    const c0=SC[ST.indexOf(l.O)], c1=SC[ST.indexOf(l.D)];
+    const gid=`g${i}`;
+    const gr=defs.append('linearGradient').attr('id',gid).attr('x1','0%').attr('x2','100%');
+    gr.append('stop').attr('offset','0%').attr('stop-color',c0).attr('stop-opacity',0.62);
+    gr.append('stop').attr('offset','100%').attr('stop-color',c1).attr('stop-opacity',0.46);
+    const x0=nW, x1=iW-nW, mx=(x0+x1)/2;
+    const p=`M${x0},${l.ly0}C${mx},${l.ly0} ${mx},${l.ry0} ${x1},${l.ry0}
+             L${x1},${l.ry0+l.rh}C${mx},${l.ry0+l.rh} ${mx},${l.ly0+l.lh} ${x0},${l.ly0+l.lh}Z`;
+    g.append('path').attr('d',p).attr('fill',`url(#${gid})`).attr('opacity',0.55)
+      .style('cursor','pointer')
+      .on('mouseover',function(e){ d3.select(this).attr('opacity',0.92);
+        show(`<b>${l.O} → ${l.D}</b>${l.v.toLocaleString()} passengers<br>${(l.v/96320*100).toFixed(2)}% of daily ridership`,e); })
+      .on('mousemove',mv).on('mouseout',function(){ d3.select(this).attr('opacity',0.55); hide(); });
+  });
+
+  // Left nodes + labels
+  LN.forEach(n=>{
+    g.append('rect').attr('x',0).attr('y',n.y).attr('width',nW).attr('height',n.h)
+      .attr('fill',SC[n.i]).attr('rx',2)
+      .on('mouseover',e=>show(`<b>DEP: ${n.id}</b>${depS[n.id].toLocaleString()} departures`,e))
+      .on('mousemove',mv).on('mouseout',hide);
+    g.append('text').attr('x',-9).attr('y',n.y+n.h/2)
+      .attr('text-anchor','end').attr('dominant-baseline','middle')
+      .attr('fill',SC[n.i]).attr('font-weight','600')
+      .attr('font-size',Math.max(9,Math.min(12,n.h*0.58)))
+      .attr('font-family','IBM Plex Sans,sans-serif')
+      .text(SS[n.i]);
+  });
+
+  // Right nodes + labels
+  RN.forEach(n=>{
+    g.append('rect').attr('x',iW-nW).attr('y',n.y).attr('width',nW).attr('height',n.h)
+      .attr('fill',SC[n.i]).attr('rx',2)
+      .on('mouseover',e=>show(`<b>ARR: ${n.id}</b>${arrS[n.id].toLocaleString()} arrivals`,e))
+      .on('mousemove',mv).on('mouseout',hide);
+    g.append('text').attr('x',iW-nW+10).attr('y',n.y+n.h/2)
+      .attr('text-anchor','start').attr('dominant-baseline','middle')
+      .attr('fill',SC[n.i]).attr('font-weight','600')
+      .attr('font-size',Math.max(9,Math.min(12,n.h*0.58)))
+      .attr('font-family','IBM Plex Sans,sans-serif')
+      .text(SS[n.i]);
+  });
+
+  // Column headers
+  g.append('text').attr('x',nW/2).attr('y',-14).attr('text-anchor','middle')
+    .attr('font-family','IBM Plex Mono,monospace').attr('font-size',11).attr('fill','#718096').attr('letter-spacing','2').text('DEPARTURES');
+  g.append('text').attr('x',iW-nW/2).attr('y',-14).attr('text-anchor','middle')
+    .attr('font-family','IBM Plex Mono,monospace').attr('font-size',11).attr('fill','#718096').attr('letter-spacing','2').text('ARRIVALS');
+
+  // Legend
+  const lgnd=document.getElementById('s1-lgnd');
+  ST.forEach((s,i)=>{
+    const el=document.createElement('div'); el.className='li';
+    el.innerHTML=`<div class="ldot" style="background:${SC[i]}"></div><span>${s}</span>`;
+    lgnd.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// CHART 2 — HEATMAP
+// ═══════════════════════════════════════════════
+function drawHeatmap(){
+  const hours=[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+  const mL=152, mR=12, mT=6, mB=38;
+  const W=PW();
+  const iW=W-mL-mR;
+  const iH=460;
+  const H=iH+mT+mB;
+  const cW=iW/hours.length, cH=iH/ST.length;
+
+  const lkp={};
+  HM.forEach(d=>{ lkp[`${d.h}_${d.s}`]=d.c; });
+  const mx=d3.max(HM,d=>d.c);
+  const cs=d3.scaleSequential().domain([0,mx]).interpolator(d3.interpolateYlOrRd);
+
+  const svg=d3.select('#s2').append('svg').attr('width',W).attr('height',H);
+  const g=svg.append('g').attr('transform',`translate(${mL},${mT})`);
+
+  ST.forEach((s,si)=>{
+    hours.forEach((h,hi)=>{
+      const val=lkp[`${h}_${s}`]||0;
+      g.append('rect').attr('x',hi*cW+1.5).attr('y',si*cH+1.5)
+        .attr('width',cW-3).attr('height',cH-3).attr('rx',3)
+        .attr('fill',val>0?cs(val):'#f1f5f9').style('cursor','pointer')
+        .on('mouseover',function(e){ d3.select(this).attr('stroke','#1a202c').attr('stroke-width',2);
+          show(`<b>${s}</b>${h}:00–${h+1}:00<br>${val.toLocaleString()} check-ins`,e); })
+        .on('mousemove',mv).on('mouseout',function(){ d3.select(this).attr('stroke','none'); hide(); });
+      if(val>500&&cW>22&&cH>13){
+        g.append('text').attr('x',hi*cW+cW/2).attr('y',si*cH+cH/2)
+          .attr('text-anchor','middle').attr('dominant-baseline','middle')
+          .attr('font-size',Math.min(11,cH*0.52)).attr('font-family','IBM Plex Mono,monospace')
+          .attr('fill',val>mx*0.45?'#fff':'#1a202c')
+          .text(val>=10000?(val/1000).toFixed(0)+'k':val>=1000?(val/1000).toFixed(1)+'k':val);
+      }
+    });
+  });
+
+  ST.forEach((s,si)=>{
+    g.append('text').attr('x',-8).attr('y',si*cH+cH/2)
+      .attr('text-anchor','end').attr('dominant-baseline','middle')
+      .attr('fill',SC[si]).attr('font-size',11).attr('font-weight','600')
+      .attr('font-family','IBM Plex Sans,sans-serif').text(SS[si]);
+  });
+  hours.forEach((h,hi)=>{
+    g.append('text').attr('x',hi*cW+cW/2).attr('y',iH+22)
+      .attr('text-anchor','middle').attr('font-size',11)
+      .attr('font-family','IBM Plex Mono,monospace').attr('fill','#718096').text(`${h}h`);
+  });
+  [7,8,18,19].forEach(ph=>{
+    const hi=hours.indexOf(ph);
+    if(hi>=0) g.append('rect').attr('x',hi*cW).attr('y',0).attr('width',cW).attr('height',iH)
+      .attr('fill','none').attr('stroke','#dc2626').attr('stroke-width',2).attr('stroke-dasharray','5,3').attr('pointer-events','none');
+  });
+
+  document.getElementById('gmbar').style.background=
+    `linear-gradient(90deg,${cs(0)},${cs(mx*0.33)},${cs(mx*0.66)},${cs(mx)})`;
+}
+
+// ═══════════════════════════════════════════════
+// CHART 3 — TIME–SPACE
+// ═══════════════════════════════════════════════
+function drawTimeSpace(){
+  const mL=152, mR=12, mT=22, mB=44;
+  const W=PW();
+  const iW=W-mL-mR;
+  const iH=440;
+  const H=iH+mT+mB;
+  const tS=5*60, tE=22*60;
+
+  const xS=d3.scaleLinear().domain([tS,tE]).range([0,iW]);
+  const yS=d3.scalePoint().domain(ST).range([0,iH]).padding(0.35);
+  const dist=[0,2,4,6,9,12,15,19,22,25,28,31,34,37];
+
+  function hw(h){ return h===7||h===8||h===18?5:h===9||h===19||h===20?8:10; }
+
+  const trips=[];
+  for(let h=5;h<=20;h++){
+    const s=hw(h);
+    for(let m=0;m<60;m+=s){
+      trips.push({dir:0, stops:ST.map((st,i)=>({s:st,t:h*60+m+dist[i]}))});
+      trips.push({dir:1, stops:ST.map((st,i)=>({s:st,t:h*60+m+3+dist[13-i]}))});
+    }
+  }
+
+  const svg=d3.select('#s3').append('svg').attr('width',W).attr('height',H);
+  const g=svg.append('g').attr('transform',`translate(${mL},${mT})`);
+
+  [[7*60,9*60,'#fef3c7'],[18*60,20*60,'#fee2e2']].forEach(([t0,t1,f])=>{
+    g.append('rect').attr('x',xS(t0)).attr('y',0).attr('width',xS(t1)-xS(t0)).attr('height',iH)
+      .attr('fill',f).attr('opacity',0.65);
+  });
+  ST.forEach(s=>{
+    g.append('line').attr('x1',0).attr('y1',yS(s)).attr('x2',iW).attr('y2',yS(s))
+      .attr('stroke','#e2e8f0').attr('stroke-width',1);
+  });
+
+  const lg=d3.line().x(d=>xS(d.t)).y(d=>yS(d.s)).defined(d=>d.t<=tE+60);
+  trips.forEach(tr=>{
+    const col=tr.dir===0?'#2563eb':'#dc2626';
+    g.append('path').datum(tr.stops).attr('d',lg).attr('fill','none')
+      .attr('stroke',col).attr('stroke-width',1).attr('opacity',0.48)
+      .style('cursor','pointer')
+      .on('mouseover',function(e){ d3.select(this).attr('stroke-width',2.5).attr('opacity',1);
+        const d0=tr.stops[0], dn=tr.stops[13];
+        const fmt=m=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+        show(`<b>${tr.dir===0?'↗ BT → Suoi Tien':'↙ Suoi Tien → BT'}</b>Dep ${d0.s} @ ${fmt(d0.t)}<br>Arr ${dn.s} @ ${fmt(dn.t)}`,e); })
+      .on('mousemove',mv).on('mouseout',function(){ d3.select(this).attr('stroke-width',1).attr('opacity',0.48); hide(); });
+  });
+
+  ST.forEach((s,i)=>{
+    g.append('text').attr('x',-8).attr('y',yS(s)).attr('text-anchor','end')
+      .attr('dominant-baseline','middle').attr('fill',SC[i]).attr('font-size',11)
+      .attr('font-weight','600').attr('font-family','IBM Plex Sans,sans-serif').text(SS[i]);
+  });
+  d3.range(5,23).forEach(h=>{
+    const xp=xS(h*60);
+    const pk=h===7||h===18;
+    g.append('line').attr('x1',xp).attr('y1',0).attr('x2',xp).attr('y2',iH)
+      .attr('stroke',pk?'#dc2626':'#cbd5e0').attr('stroke-width',pk?1.5:1)
+      .attr('stroke-dasharray',pk?'none':'3,4');
+    if(h<=21) g.append('text').attr('x',xp).attr('y',iH+20).attr('text-anchor','middle')
+      .attr('font-size',11).attr('font-family','IBM Plex Mono,monospace')
+      .attr('fill',pk?'#dc2626':'#718096').attr('font-weight',pk?'700':'400')
+      .text(`${h}:00`);
+  });
+  [['MORNING PEAK',7.5*60,'#d97706'],['EVENING PEAK',18.5*60,'#dc2626']].forEach(([l,t,c])=>{
+    g.append('text').attr('x',xS(t)).attr('y',-6).attr('text-anchor','middle')
+      .attr('font-size',10).attr('font-family','IBM Plex Mono,monospace')
+      .attr('fill',c).attr('font-weight','700').attr('letter-spacing','1').text(l);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// CHART 4 — CIRCULAR
+// ═══════════════════════════════════════════════
+function drawCircular(){
+  const sz=460;
+  const cx=sz/2, cy=sz/2;
+  const iR=sz*0.16, oR=sz*0.44;
+  const mx=d3.max(HR,d=>d.c);
+  const rS=d3.scaleLinear().domain([0,mx]).range([iR,oR]);
+  const n=HR.length, aS=2*Math.PI/n;
+  const isAM=h=>h===7||h===8, isPM=h=>h===18||h===19;
+  const bc=d=>isAM(d.h)?'#dc2626':isPM(d.h)?'#2563eb':'#94a3b8';
+
+  const svg=d3.select('#s4-svg-wrap').append('svg').attr('width',sz).attr('height',sz);
+
+  [0.25,0.5,0.75,1].forEach(t=>{
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',iR+(oR-iR)*t)
+      .attr('fill','none').attr('stroke','#e2e8f0').attr('stroke-dasharray','3,5');
+  });
+  [5000,10000,15000,20000].forEach(v=>{
+    svg.append('text').attr('x',cx+rS(v)+4).attr('y',cy-3).attr('fill','#94a3b8')
+      .attr('font-size',8).attr('font-family','IBM Plex Mono,monospace').text(v/1000+'k');
+  });
+
+  const arc=d3.arc()
+    .innerRadius(iR).outerRadius(d=>rS(d.c))
+    .startAngle((_,i)=>i*aS-aS*0.4).endAngle((_,i)=>i*aS+aS*0.4)
+    .padAngle(0.04).cornerRadius(3);
+
+  svg.selectAll('.cb').data(HR).enter().append('path').attr('class','cb')
+    .attr('d',(d,i)=>arc(d,i)).attr('transform',`translate(${cx},${cy})`)
+    .attr('fill',d=>bc(d)).attr('opacity',0.82).style('cursor','pointer')
+    .on('mouseover',function(e,d){ d3.select(this).attr('opacity',1).attr('stroke','#1a202c').attr('stroke-width',1.5);
+      const tag=isAM(d.h)?'▲ AM PEAK':isPM(d.h)?'▲ PM PEAK':'';
+      show(`<b>${d.h}:00–${d.h+1}:00 ${tag}</b>${d.c.toLocaleString()} passengers<br>${(d.c/96320*100).toFixed(1)}% of daily total`,e); })
+    .on('mousemove',mv)
+    .on('mouseout',function(){ d3.select(this).attr('opacity',0.82).attr('stroke','none'); hide(); });
+
+  HR.forEach((d,i)=>{
+    const a=i*aS-Math.PI/2, r=oR+22, pk=isAM(d.h)||isPM(d.h);
+    svg.append('text').attr('x',cx+Math.cos(a)*r).attr('y',cy+Math.sin(a)*r)
+      .attr('text-anchor','middle').attr('dominant-baseline','middle')
+      .attr('font-size',pk?11:9).attr('font-family','IBM Plex Mono,monospace')
+      .attr('font-weight',pk?'700':'400').attr('fill',bc(d)).text(`${d.h}h`);
+  });
+
+  svg.append('text').attr('x',cx).attr('y',cy-18).attr('text-anchor','middle')
+    .attr('fill','#94a3b8').attr('font-size',9).attr('font-family','IBM Plex Mono,monospace').text('FEB 21 2026');
+  svg.append('text').attr('x',cx).attr('y',cy+5).attr('text-anchor','middle')
+    .attr('fill','#1a202c').attr('font-size',20).attr('font-weight','700')
+    .attr('font-family','IBM Plex Sans,sans-serif').text('96,320');
+  svg.append('text').attr('x',cx).attr('y',cy+23).attr('text-anchor','middle')
+    .attr('fill','#94a3b8').attr('font-size',9).attr('font-family','IBM Plex Mono,monospace').text('PASSENGERS');
+
+  const grid=document.getElementById('hgrid');
+  HR.forEach(d=>{
+    const cls=isAM(d.h)?'hcell am':isPM(d.h)?'hcell pm':'hcell';
+    const bdg=isAM(d.h)?'<span class="bdg">AM</span>':isPM(d.h)?'<span class="bdg">PM</span>':'';
+    const el=document.createElement('div'); el.className=cls;
+    el.innerHTML=`<div class="hl">${d.h}:00${bdg}</div><div class="hv">${d.c.toLocaleString()}</div>`;
+    grid.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// INIT — draw after full layout
+// ═══════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  // Small timeout ensures browser has finished rendering .page layout
+  setTimeout(()=>{
+    drawSankey();
+    drawHeatmap();
+    drawTimeSpace();
+    drawCircular();
+  }, 60);
+});
+</script>
+</body>
+</html>
